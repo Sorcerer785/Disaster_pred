@@ -14,7 +14,10 @@ def init_db():
     )
     ''')
     
-    # Create predictions table
+    # Drop and recreate predictions table with new columns
+    cursor.execute('DROP TABLE IF EXISTS predictions')
+    
+    # Create predictions table with additional fields
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS predictions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,9 +26,13 @@ def init_db():
         temperature REAL,
         humidity REAL,
         wind_speed REAL,
+        soil_moisture REAL,
+        air_pressure REAL,
         result TEXT,
         timestamp TEXT,
         probability TEXT,
+        disaster_type TEXT,
+        severity TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')
@@ -39,7 +46,9 @@ def init_db():
         rainfall REAL,
         temperature REAL,
         humidity REAL,
-        wind_speed REAL
+        wind_speed REAL,
+        soil_moisture REAL,
+        air_pressure REAL
     )
     ''')
     

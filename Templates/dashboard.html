@@ -66,6 +66,31 @@
         background-color: #198754;
         color: white;
       }
+      .badge-low {
+        background-color: #198754;
+        color: white;
+      }
+      .badge-medium {
+        background-color: #fd7e14;
+        color: white;
+      }
+      .badge-high {
+        background-color: #dc3545;
+        color: white;
+      }
+      .api-docs {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 30px;
+      }
+      .api-endpoint {
+        background-color: #e9ecef;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        margin: 10px 0;
+      }
     </style>
   </head>
   <body>
@@ -86,6 +111,9 @@
             </a>
             <a href="#new-prediction" class="sidebar-link">
               <i class="fas fa-plus-circle me-2"></i> New Prediction
+            </a>
+            <a href="{{ url_for('map_dashboard') }}" class="sidebar-link">
+              <i class="fas fa-map-marked-alt me-2"></i> Map View
             </a>
             <a href="{{ url_for('logout') }}" class="sidebar-link">
               <i class="fas fa-sign-out-alt me-2"></i> Logout
@@ -113,19 +141,6 @@
             {% endif %}
           {% endwith %}
 
-          {% if graphs %}
-          <!-- Data Visualization -->
-          <h4 class="mb-3">Data Visualization</h4>
-          <div class="row">
-            <div class="col-md-6">
-              <div class="graph-container" id="feature-importance-graph"></div>
-            </div>
-            <div class="col-md-6">
-              <div class="graph-container" id="recent-predictions-graph"></div>
-            </div>
-          </div>
-          {% endif %}
-          
           <!-- New Prediction -->
           <div id="new-prediction" class="mt-4 mb-4">
             <h4 class="mb-3">New Prediction</h4>
@@ -136,26 +151,70 @@
                     <h5 class="mb-0"><i class="fas fa-cloud-rain me-2"></i>Enter Weather Data</h5>
                   </div>
                   <div class="card-body">
+                    <!-- Fetch weather data by city -->
+                    <div class="mb-4">
+                      <form action="{{ url_for('fetch_weather') }}" method="post">
+                        <div class="mb-3">
+                          <label for="city" class="form-label">Select a city or enter a custom one:</label>
+                          <select class="form-select mb-2" id="citySelect" onchange="updateCityInput(this.value)">
+                            <option value="" selected>-- Select a city --</option>
+                            <option value="New York">New York, USA</option>
+                            <option value="London">London, UK</option>
+                            <option value="Tokyo">Tokyo, Japan</option>
+                            <option value="Sydney">Sydney, Australia</option>
+                            <option value="Paris">Paris, France</option>
+                            <option value="Mumbai">Mumbai, India</option>
+                            <option value="Cairo">Cairo, Egypt</option>
+                            <option value="Rio de Janeiro">Rio de Janeiro, Brazil</option>
+                            <option value="Moscow">Moscow, Russia</option>
+                            <option value="Beijing">Beijing, China</option>
+                          </select>
+                        </div>
+                        <div class="input-group">
+                          <input type="text" class="form-control" placeholder="Enter city name" name="city" id="cityInput" required>
+                          <button class="btn btn-outline-primary" type="submit">Fetch Weather</button>
+                        </div>
+                        <small class="form-text text-muted">Get real-time weather data for any city</small>
+                      </form>
+                    </div>
+
                     <form action="{{ url_for('predict') }}" method="post">
                       <div class="mb-3">
                         <label for="rainfall" class="form-label">Rainfall (mm)</label>
-                        <input type="number" step="0.01" min="0" max="1000" class="form-control" id="rainfall" name="rainfall" required>
-                        <small class="form-text text-muted">Enter rainfall in millimeters</small>
+                        <input type="number" step="any" min="0" max="1000" class="form-control" id="rainfall" name="rainfall" 
+                          value="{{ weather_data.rainfall if weather_data else '' }}" required>
+                        <small class="form-text text-muted">Enter rainfall in millimeters (decimals allowed)</small>
                       </div>
                       <div class="mb-3">
                         <label for="temperature" class="form-label">Temperature (°C)</label>
-                        <input type="number" step="0.1" min="-50" max="60" class="form-control" id="temperature" name="temperature" required>
-                        <small class="form-text text-muted">Enter temperature in degrees Celsius</small>
+                        <input type="number" step="any" min="-50" max="60" class="form-control" id="temperature" name="temperature" 
+                          value="{{ weather_data.temperature if weather_data else '' }}" required>
+                        <small class="form-text text-muted">Enter temperature in degrees Celsius (decimals allowed)</small>
                       </div>
                       <div class="mb-3">
                         <label for="humidity" class="form-label">Humidity (%)</label>
-                        <input type="number" step="0.1" min="0" max="100" class="form-control" id="humidity" name="humidity" required>
-                        <small class="form-text text-muted">Enter humidity percentage</small>
+                        <input type="number" step="any" min="0" max="100" class="form-control" id="humidity" name="humidity" 
+                          value="{{ weather_data.humidity if weather_data else '' }}" required>
+                        <small class="form-text text-muted">Enter humidity percentage (decimals allowed)</small>
                       </div>
                       <div class="mb-3">
                         <label for="wind_speed" class="form-label">Wind Speed (m/s)</label>
-                        <input type="number" step="0.1" min="0" max="100" class="form-control" id="wind_speed" name="wind_speed" required>
-                        <small class="form-text text-muted">Enter wind speed in meters per second</small>
+                        <input type="number" step="any" min="0" max="100" class="form-control" id="wind_speed" name="wind_speed" 
+                          value="{{ weather_data.wind_speed if weather_data else '' }}" required>
+                        <small class="form-text text-muted">Enter wind speed in meters per second (decimals allowed)</small>
+                      </div>
+                      <!-- New fields -->
+                      <div class="mb-3">
+                        <label for="soil_moisture" class="form-label">Soil Moisture (%)</label>
+                        <input type="number" step="any" min="0" max="100" class="form-control" id="soil_moisture" name="soil_moisture" 
+                          value="{{ weather_data.soil_moisture if weather_data and weather_data.soil_moisture else '' }}">
+                        <small class="form-text text-muted">Enter soil moisture percentage (decimals allowed, optional)</small>
+                      </div>
+                      <div class="mb-3">
+                        <label for="air_pressure" class="form-label">Air Pressure (hPa)</label>
+                        <input type="number" step="any" min="800" max="1100" class="form-control" id="air_pressure" name="air_pressure" 
+                          value="{{ weather_data.air_pressure if weather_data else '' }}">
+                        <small class="form-text text-muted">Enter air pressure in hectopascals (decimals allowed, optional)</small>
                       </div>
                       <div class="d-grid">
                         <button type="submit" class="btn btn-primary py-2">Predict Disaster Risk</button>
@@ -170,18 +229,31 @@
                     <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>How It Works</h5>
                   </div>
                   <div class="card-body">
-                    <p>Our AI model predicts disaster risks based on weather conditions:</p>
+                    <p>Our enhanced AI model predicts disaster risks based on comprehensive weather conditions:</p>
                     <ul>
                       <li><strong>Rainfall:</strong> Heavy rainfall increases flood risk</li>
                       <li><strong>Temperature:</strong> Extreme temperatures can indicate severe weather</li>
                       <li><strong>Humidity:</strong> High humidity with rainfall increases disaster risk</li>
                       <li><strong>Wind Speed:</strong> High wind speeds can indicate storms</li>
+                      <li><strong>Soil Moisture:</strong> Saturated soil increases flood risk</li>
+                      <li><strong>Air Pressure:</strong> Low pressure can indicate storms and cyclones</li>
                     </ul>
                     <hr>
-                    <h6>Our model criteria:</h6>
-                    <p>The AI considers rainfall over 200mm with humidity over 80% as high risk conditions.</p>
+                    <h6>Disaster Types:</h6>
+                    <p>The AI can now predict specific disaster types:</p>
+                    <ul>
+                      <li><strong>Flood:</strong> Heavy rainfall with saturated soil</li>
+                      <li><strong>Storm:</strong> High winds and low pressure</li>
+                      <li><strong>Heatwave:</strong> High temperature with low humidity</li>
+                    </ul>
+                    <h6>Severity Levels:</h6>
+                    <div class="mb-2">
+                      <span class="badge badge-low p-2">Low</span>
+                      <span class="badge badge-medium p-2">Medium</span>
+                      <span class="badge badge-high p-2">High</span>
+                    </div>
                     <div class="alert alert-primary">
-                      <i class="fas fa-lightbulb me-2"></i> The more data you enter, the more accurately our system can predict and warn of potential disasters.
+                      <i class="fas fa-lightbulb me-2"></i> The model continuously learns from data to improve prediction accuracy.
                     </div>
                   </div>
                 </div>
@@ -203,7 +275,11 @@
                         <th>Temperature (°C)</th>
                         <th>Humidity (%)</th>
                         <th>Wind Speed (m/s)</th>
+                        <th>Soil Moisture (%)</th>
+                        <th>Air Pressure (hPa)</th>
                         <th>Result</th>
+                        <th>Type</th>
+                        <th>Severity</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -214,11 +290,33 @@
                           <td>{{ pred.temperature }}</td>
                           <td>{{ pred.humidity }}</td>
                           <td>{{ pred.wind_speed }}</td>
+                          <td>{{ pred.soil_moisture if pred.soil_moisture is not none else 'N/A' }}</td>
+                          <td>{{ pred.air_pressure if pred.air_pressure is not none else 'N/A' }}</td>
                           <td>
                             {% if "Likely" in pred.result %}
                               <span class="badge alert-disaster">{{ pred.result }}</span>
                             {% else %}
                               <span class="badge alert-safe">{{ pred.result }}</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            {% if pred.disaster_type %}
+                              <span class="badge bg-info">{{ pred.disaster_type }}</span>
+                            {% else %}
+                              <span>N/A</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            {% if pred.severity %}
+                              {% if pred.severity == 'Low' %}
+                                <span class="badge badge-low">{{ pred.severity }}</span>
+                              {% elif pred.severity == 'Medium' %}
+                                <span class="badge badge-medium">{{ pred.severity }}</span>
+                              {% elif pred.severity == 'High' %}
+                                <span class="badge badge-high">{{ pred.severity }}</span>
+                              {% endif %}
+                            {% else %}
+                              <span>N/A</span>
                             {% endif %}
                           </td>
                         </tr>
@@ -233,6 +331,77 @@
               {% endif %}
             </div>
           </div>
+
+          <!-- Data Visualization Section (Moved to Bottom) -->
+          {% if graphs %}
+          <div id="visualizations" class="mt-5">
+            <h4 class="mb-3">Data Visualization</h4>
+            <div class="row">
+              <div class="col-md-6 mb-4">
+                <div class="graph-container">
+                  <div id="feature-importance-graph" style="width:100%; height:450px;"></div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-4">
+                <div class="graph-container">
+                  <div id="recent-predictions-graph" style="width:100%; height:450px;"></div>
+                </div>
+              </div>
+              {% if graphs.disaster_types %}
+              <div class="col-md-6 mb-4">
+                <div class="graph-container">
+                  <div id="disaster-types-graph" style="width:100%; height:450px;"></div>
+                </div>
+              </div>
+              {% endif %}
+              {% if graphs.severity %}
+              <div class="col-md-6 mb-4">
+                <div class="graph-container">
+                  <div id="severity-graph" style="width:100%; height:450px;"></div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- API Documentation -->
+          <div id="api-docs" class="mt-4">
+            <h4 class="mb-3">API Documentation</h4>
+            <div class="api-docs">
+              <h5>Prediction API</h5>
+              <p>Use our API to make disaster predictions programmatically:</p>
+              
+              <h6>Endpoint</h6>
+              <div class="api-endpoint">POST /api/predict</div>
+              
+              <h6>Request Format</h6>
+              <pre><code>{
+  "rainfall": 250.0,
+  "temperature": 30.0,
+  "humidity": 85.0,
+  "wind_speed": 15.0,
+  "soil_moisture": 80.0,
+  "air_pressure": 990.0
+}</code></pre>
+              
+              <h6>Response Format</h6>
+              <pre><code>{
+  "result": "Disaster Likely",
+  "probability": [0.2, 0.8],
+  "disaster_type": "Flood",
+  "severity": "Medium",
+  "features": {
+    "rainfall": 250.0,
+    "temperature": 30.0,
+    "humidity": 85.0,
+    "wind_speed": 15.0,
+    "soil_moisture": 80.0,
+    "air_pressure": 990.0
+  }
+}</code></pre>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -240,14 +409,71 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"></script>
     {% if graphs %}
     <script>
+      // Configuration for all charts
+      const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        toImageButtonOptions: {
+          format: 'png',
+          filename: 'chart',
+          height: 500,
+          width: 700,
+          scale: 1
+        }
+      };
+
       // Plot feature importance
       const featureImportanceData = {{ graphs.feature_importance | safe }};
-      Plotly.newPlot('feature-importance-graph', featureImportanceData.data, featureImportanceData.layout);
+      Plotly.newPlot('feature-importance-graph', featureImportanceData.data, featureImportanceData.layout, config);
       
       // Plot recent predictions
       const recentPredictionsData = {{ graphs.recent_predictions | safe }};
-      Plotly.newPlot('recent-predictions-graph', recentPredictionsData.data, recentPredictionsData.layout);
+      Plotly.newPlot('recent-predictions-graph', recentPredictionsData.data, recentPredictionsData.layout, config);
+      
+      {% if graphs.disaster_types %}
+      // Plot disaster type distribution
+      const disasterTypesData = {{ graphs.disaster_types | safe }};
+      Plotly.newPlot('disaster-types-graph', disasterTypesData.data, disasterTypesData.layout, config);
+      {% endif %}
+      
+      {% if graphs.severity %}
+      // Plot severity distribution
+      const severityData = {{ graphs.severity | safe }};
+      Plotly.newPlot('severity-graph', severityData.data, severityData.layout, config);
+      {% endif %}
+
+      // Make sure charts resize when window is resized
+      window.addEventListener('resize', function() {
+        Plotly.relayout('feature-importance-graph', {
+          'xaxis.autorange': true,
+          'yaxis.autorange': true
+        });
+        Plotly.relayout('recent-predictions-graph', {
+          'xaxis.autorange': true,
+          'yaxis.autorange': true
+        });
+        {% if graphs.disaster_types %}
+        Plotly.relayout('disaster-types-graph', {
+          'xaxis.autorange': true,
+          'yaxis.autorange': true
+        });
+        {% endif %}
+        {% if graphs.severity %}
+        Plotly.relayout('severity-graph', {
+          'xaxis.autorange': true,
+          'yaxis.autorange': true
+        });
+        {% endif %}
+      });
     </script>
     {% endif %}
+    <script>
+    function updateCityInput(selectedCity) {
+      if (selectedCity) {
+        document.getElementById('cityInput').value = selectedCity;
+      }
+    }
+    </script>
   </body>
 </html> 

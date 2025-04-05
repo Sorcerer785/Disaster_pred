@@ -66,16 +66,21 @@ class User(UserMixin):
 
 class Prediction:
     def __init__(self, id=None, user_id=None, rainfall=None, temperature=None, 
-                 humidity=None, wind_speed=None, result=None, timestamp=None, probability=None):
+                 humidity=None, wind_speed=None, soil_moisture=None, air_pressure=None,
+                 result=None, timestamp=None, probability=None, disaster_type=None, severity=None):
         self.id = id
         self.user_id = user_id
         self.rainfall = rainfall
         self.temperature = temperature
         self.humidity = humidity
         self.wind_speed = wind_speed
+        self.soil_moisture = soil_moisture
+        self.air_pressure = air_pressure
         self.result = result
         self.timestamp = timestamp or datetime.datetime.now().isoformat()
         self.probability = probability
+        self.disaster_type = disaster_type
+        self.severity = severity
 
     @staticmethod
     def save(prediction):
@@ -83,11 +88,13 @@ class Prediction:
         cursor = conn.cursor()
         cursor.execute(
             """INSERT INTO predictions 
-               (user_id, rainfall, temperature, humidity, wind_speed, result, timestamp, probability) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+               (user_id, rainfall, temperature, humidity, wind_speed, soil_moisture, air_pressure,
+                result, timestamp, probability, disaster_type, severity) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (prediction.user_id, prediction.rainfall, prediction.temperature, 
-             prediction.humidity, prediction.wind_speed, prediction.result, 
-             prediction.timestamp, json.dumps(prediction.probability) if prediction.probability else None)
+             prediction.humidity, prediction.wind_speed, prediction.soil_moisture, prediction.air_pressure,
+             prediction.result, prediction.timestamp, json.dumps(prediction.probability) if prediction.probability else None,
+             prediction.disaster_type, prediction.severity)
         )
         conn.commit()
         prediction_id = cursor.lastrowid
@@ -106,6 +113,12 @@ class Prediction:
         )
         predictions = []
         for row in cursor.fetchall():
+            # Check if columns exist before accessing them
+            soil_moisture = row['soil_moisture'] if 'soil_moisture' in row.keys() else None
+            air_pressure = row['air_pressure'] if 'air_pressure' in row.keys() else None
+            disaster_type = row['disaster_type'] if 'disaster_type' in row.keys() else None
+            severity = row['severity'] if 'severity' in row.keys() else None
+            
             pred = Prediction(
                 id=row['id'],
                 user_id=row['user_id'],
@@ -113,9 +126,13 @@ class Prediction:
                 temperature=row['temperature'],
                 humidity=row['humidity'],
                 wind_speed=row['wind_speed'],
+                soil_moisture=soil_moisture,
+                air_pressure=air_pressure,
                 result=row['result'],
                 timestamp=row['timestamp'],
-                probability=json.loads(row['probability']) if row['probability'] else None
+                probability=json.loads(row['probability']) if row['probability'] else None,
+                disaster_type=disaster_type,
+                severity=severity
             )
             predictions.append(pred)
         conn.close()

@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Map Dashboard | AI Disaster Warning System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+      body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f8f9fa;
+      }
+      .sidebar {
+        min-height: 100vh;
+        background-color: #212529;
+        color: white;
+      }
+      .sidebar-link {
+        color: rgba(255, 255, 255, 0.8);
+        padding: 0.8rem 1rem;
+        display: block;
+        transition: all 0.3s;
+        text-decoration: none;
+      }
+      .sidebar-link:hover, .sidebar-link.active {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+      .sidebar-header {
+        padding: 1.5rem 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      #map {
+        height: 600px;
+        width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      }
+      .map-container {
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .map-legend {
+        background-color: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 20px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-right: 10px;
+      }
+      .flood {
+        background-color: #3498db;
+      }
+      .storm {
+        background-color: #8e44ad;
+      }
+      .heatwave {
+        background-color: #e74c3c;
+      }
+      .low {
+        background-color: #2ecc71;
+      }
+      .medium {
+        background-color: #f39c12;
+      }
+      .high {
+        background-color: #c0392b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-2 p-0 sidebar">
+          <div class="sidebar-header">
+            <h4><i class="fas fa-cloud-bolt"></i> AI Disaster</h4>
+            <p class="mb-0 text-muted">Warning System</p>
+          </div>
+          <div class="mt-3">
+            <a href="{{ url_for('dashboard') }}" class="sidebar-link">
+              <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+            </a>
+            <a href="{{ url_for('dashboard') }}#predictions" class="sidebar-link">
+              <i class="fas fa-history me-2"></i> Prediction History
+            </a>
+            <a href="{{ url_for('dashboard') }}#new-prediction" class="sidebar-link">
+              <i class="fas fa-plus-circle me-2"></i> New Prediction
+            </a>
+            <a href="#" class="sidebar-link active">
+              <i class="fas fa-map-marked-alt me-2"></i> Map View
+            </a>
+            <a href="{{ url_for('logout') }}" class="sidebar-link">
+              <i class="fas fa-sign-out-alt me-2"></i> Logout
+            </a>
+          </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10 py-4 px-4">
+          <!-- Welcome Section -->
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Disaster Risk Map</h2>
+            <div>
+              <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+              </a>
+              <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+              </a>
+            </div>
+          </div>
+          
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-info">{{ message }}</div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <!-- Map View -->
+          <div class="row">
+            <div class="col-md-8">
+              <div class="map-container">
+                <div id="map"></div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="map-legend">
+                <h5>Map Legend</h5>
+                <h6 class="mt-3">Disaster Types</h6>
+                <div class="legend-item">
+                  <div class="legend-color flood"></div>
+                  <div>Flood</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color storm"></div>
+                  <div>Storm</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color heatwave"></div>
+                  <div>Heatwave</div>
+                </div>
+                
+                <h6 class="mt-3">Severity Levels</h6>
+                <div class="legend-item">
+                  <div class="legend-color low"></div>
+                  <div>Low</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color medium"></div>
+                  <div>Medium</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color high"></div>
+                  <div>High</div>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                  <i class="fas fa-info-circle me-2"></i> Click on any point to see detailed information.
+                </div>
+              </div>
+              
+              <!-- Latest Predictions Summary -->
+              <div class="card mt-3">
+                <div class="card-header bg-primary text-white">
+                  <h5 class="mb-0">Latest Predictions</h5>
+                </div>
+                <div class="card-body">
+                  {% if predictions %}
+                    <ul class="list-group list-group-flush">
+                      {% for pred in predictions[:5] %}
+                        <li class="list-group-item">
+                          <strong>{{ pred.timestamp }}</strong><br>
+                          {% if pred.disaster_type %}
+                            <span class="badge bg-info">{{ pred.disaster_type }}</span>
+                          {% endif %}
+                          {% if pred.severity %}
+                            {% if pred.severity == 'Low' %}
+                              <span class="badge bg-success">{{ pred.severity }}</span>
+                            {% elif pred.severity == 'Medium' %}
+                              <span class="badge bg-warning text-dark">{{ pred.severity }}</span>
+                            {% elif pred.severity == 'High' %}
+                              <span class="badge bg-danger">{{ pred.severity }}</span>
+                            {% endif %}
+                          {% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <p>No predictions available.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Initialize the map
+      var map = L.map('map').setView([40.7128, -74.0060], 4); // Default to New York
+      
+      // Add the base tile layer (OpenStreetMap)
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+      
+      // Function to get color based on disaster type
+      function getDisasterColor(type) {
+        switch(type) {
+          case 'Flood': return '#3498db';
+          case 'Storm': return '#8e44ad';
+          case 'Heatwave': return '#e74c3c';
+          default: return '#7f8c8d';
+        }
+      }
+      
+      // Function to get icon size based on severity
+      function getMarkerSize(severity) {
+        switch(severity) {
+          case 'High': return 14;
+          case 'Medium': return 10;
+          case 'Low': return 6;
+          default: return 8;
+        }
+      }
+      
+      // Generate some sample prediction points
+      // In a real system, these would come from your database and include actual lat/long
+      var predictionPoints = [
+        {% for pred in predictions %}
+          {% if 'Likely' in pred.result %}
+            {
+              lat: {{ 30 + loop.index0 * 0.5 }}, // These are dummy coordinates
+              lng: {{ -100 + loop.index0 * 0.7 }}, // You'd use real coordinates in production
+              type: "{{ pred.disaster_type if pred.disaster_type else 'Unknown' }}",
+              severity: "{{ pred.severity if pred.severity else 'Low' }}",
+              timestamp: "{{ pred.timestamp }}",
+              rainfall: {{ pred.rainfall }},
+              temperature: {{ pred.temperature }},
+              humidity: {{ pred.humidity }},
+              wind_speed: {{ pred.wind_speed }},
+              soil_moisture: {{ pred.soil_moisture if pred.soil_moisture is not none else 0 }},
+              air_pressure: {{ pred.air_pressure if pred.air_pressure is not none else 0 }}
+            }{% if not loop.last %},{% endif %}
+          {% endif %}
+        {% endfor %}
+      ];
+      
+      // Add markers to the map
+      predictionPoints.forEach(function(point) {
+        var marker = L.circleMarker([point.lat, point.lng], {
+          radius: getMarkerSize(point.severity),
+          fillColor: getDisasterColor(point.type),
+          color: "#000",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        }).addTo(map);
+        
+        // Add popup with information
+        marker.bindPopup(`
+          <strong>${point.type} (${point.severity})</strong><br>
+          <strong>Time:</strong> ${point.timestamp}<br>
+          <strong>Rainfall:</strong> ${point.rainfall} mm<br>
+          <strong>Temperature:</strong> ${point.temperature} °C<br>
+          <strong>Humidity:</strong> ${point.humidity} %<br>
+          <strong>Wind Speed:</strong> ${point.wind_speed} m/s<br>
+          <strong>Soil Moisture:</strong> ${point.soil_moisture} %<br>
+          <strong>Air Pressure:</strong> ${point.air_pressure} hPa
+        `);
+      });
+    </script>
+  </body>
+</html> 
